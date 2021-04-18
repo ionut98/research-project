@@ -29,8 +29,8 @@ wss.on('connection', (socket, req) => {
 });
 
 //start our server
-const startCCUServer = () => {
-  server.listen(process.env.PORT || 30401, () => {
+const startCCUServer = (port) => {
+  server.listen(port, () => {
     console.log(`Server started on port ${server.address().port} :)`);
   });
 };

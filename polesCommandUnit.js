@@ -1,22 +1,40 @@
+const express = require('express');
+const http = require('http');
 const WebSocket = require('ws');
 
-const ws = new WebSocket('wss://echo.websocket.org/', {
-  origin: 'https://websocket.org'
+const app = express();
+
+//initialize a simple http server
+const server = http.createServer(app);
+
+//initialize the WebSocket server instance
+const wss = new WebSocket.Server({ server });
+
+wss.on('connection', (socket, req) => {
+
+    //connection is up, let's add a simple simple event
+    socket.on('message', (message) => {
+
+      //log the received message and send it back to the client
+      console.log('received: %s', message);
+      socket.send(`Hello, you sent -> ${message}`);
+    });
+
+    socket.on('close', () => {
+      console.log('closed');
+    });
+  
+    //send immediatly a feedback to the incoming connection    
+    socket.send(`You are client ${req.connection.remoteAddress}`);
 });
 
-ws.on('open', function open() {
-  console.log('connected');
-  ws.send(Date.now());
-});
+//start our server
+const startPCUServer = (port) => {
+  server.listen(port, () => {
+    console.log(`Server started on port ${server.address().port} :)`);
+  });
+};
 
-ws.on('close', function close() {
-  console.log('disconnected');
-});
-
-ws.on('message', function incoming(data) {
-  console.log(`Roundtrip time: ${Date.now() - data} ms`);
-
-  setTimeout(function timeout() {
-    ws.send(Date.now());
-  }, 500);
-});
+module.exports = {
+  startPCUServer,
+};
