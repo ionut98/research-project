@@ -2,10 +2,17 @@
   "name": "proiect-cercetare",
   "version": "1.0.0",
   "description": "",
-  "main": "centralCommandUnit.js",
+  "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Ionut Cristian Mihoci",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "ws": "^7.4.5"
+  }
 }
