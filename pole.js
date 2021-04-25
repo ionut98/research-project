@@ -1,40 +1,61 @@
-const express = require('express');
-const http = require('http');
 const WebSocket = require('ws');
+const { randomValueBetweenValues } = require('./utils');
 
-const app = express();
+const startPoleNode = (poleId, interval, pcu) => {
 
-//initialize a simple http server
-const server = http.createServer(app);
+  // initialize the WebSocket client instance for CCU <-> PCU communication
+  const wsClientCCU = new WebSocket(`ws://${pcu.host}:${pcu.port}`);
 
-//initialize the WebSocket server instance
-const wss = new WebSocket.Server({ server });
+  let intervalID = null;
 
-wss.on('connection', (socket, req) => {
+  const sendSensorsData = () => {
+    wsClientCCU.send(
 
-    //connection is up, let's add a simple simple event
-    socket.on('message', (message) => {
+      JSON.stringify({
+        type: 'sensorsData',
+        message: {
+          poleId,
+          data: {
+            timeStamp: new Date().getTime(),
+            light: randomValueBetweenValues(0, 10), // sunlight
+            temperature: randomValueBetweenValues(-25, 40),
+            humidity: randomValueBetweenValues(0, 100),
+            intensity: randomValueBetweenValues(0, 100), // percent of current electricity
+            motionDetected: Boolean(randomValueBetweenValues(0, 1))
+          }
+        }
+      })
 
-      //log the received message and send it back to the client
-      console.log('received: %s', message);
-      socket.send(`Hello, you sent -> ${message}`);
-    });
+    );
+  };
 
-    socket.on('close', () => {
-      console.log('closed');
-    });
+  wsClientCCU.on('open', () => {
+    
+    wsClientCCU.send(
+    
+      JSON.stringify({
+        type: 'info',
+        message: {
+          poleId         
+        }
+      })
+    
+    );
+
+    intervalID = setInterval(sendSensorsData, interval);
   
-    //send immediatly a feedback to the incoming connection    
-    socket.send(`You are client ${req.connection.remoteAddress}`);
-});
-
-//start our server
-const startPoleServer = (port) => {
-  server.listen(port, () => {
-    console.log(`Server started on port ${server.address().port} :)`);
   });
+
+  wsClientCCU.on('message', message => {
+    console.log(`Pole #${poleId} received from PCU ${pcu.streetName}: ${message}`);
+  });
+
+  wsClientCCU.on('close', () => {
+    clearInterval(intervalID);
+  });
+
 };
 
 module.exports = {
-  startPoleServer,
+  startPoleNode,
 };

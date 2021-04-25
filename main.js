@@ -1,24 +1,40 @@
 const { startCCUServer } = require("./centralCommandUnit");
-const { startPoleServer } = require("./pole");
+const { startPoleNode } = require("./pole");
 const { startPCUServer } = require("./polesCommandUnit");
+const { getNumberOfPolesForStreetLength, buildPoleId } = require("./utils");
+const {
+  streets,
+  ccu,
+} = require('./config');
 
-const PORT = 30401;
-const STREETS_NUMBER = 5;
+const { getWeatherData } = require("./services/getWeatherService");
 
-startCCUServer(PORT);
+getWeatherData();
 
-// to be added street length
+// startCCUServer(ccu.port);
 
-for (let indexStreet = 1; indexStreet <= STREETS_NUMBER; indexStreet++) {
+// let globalIndexPole = 1;
+// for (let indexStreet = 1; indexStreet <= streets.length; indexStreet++) {
   
-  const currentStreetIndex = indexStreet + 10 * indexStreet;
-  startPCUServer(PORT + currentStreetIndex);
+//   const { streetName, length } = streets[indexStreet - 1];
+//   startPCUServer(ccu.port + indexStreet, streetName, ccu);
+//   const currentGlobalIndexPole = globalIndexPole;
 
-  for (let indexPole = 1; indexPole <= 10; indexPole++) {
+//   for (
+//     ;
+//     globalIndexPole < currentGlobalIndexPole + getNumberOfPolesForStreetLength(length);
+//     globalIndexPole++
+//   ) {
     
-    const currentPoleIndex = currentStreetIndex + indexPole;
-    startPoleServer(PORT + currentPoleIndex);
+//     startPoleNode(
+//       buildPoleId(globalIndexPole, streetName),
+//       3000,
+//       {
+//         streetName,
+//         host: 'localhost',
+//         port: ccu.port + indexStreet,
+//       });
     
-  }
+//   }
 
-}
+// }

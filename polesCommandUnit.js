@@ -2,37 +2,56 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 
-const app = express();
+const startPCUServer = (port, streetName, ccu) => {
 
-//initialize a simple http server
-const server = http.createServer(app);
+  const app = express();
 
-//initialize the WebSocket server instance
-const wss = new WebSocket.Server({ server });
+  // initialize a simple http server
+  const server = http.createServer(app);
 
-wss.on('connection', (socket, req) => {
+  // initialize the WebSocket server instance for Pole <-> PCU communication
+  const wss = new WebSocket.Server({ server });
+  // initialize the WebSocket client instance for PCU <-> CCU communication
+  const wsClientCCU = new WebSocket(`ws://${ccu.host}:${ccu.port}`);
 
-    //connection is up, let's add a simple simple event
-    socket.on('message', (message) => {
+  wsClientCCU.on('open', () => {
+    wsClientCCU.send(`I am PCU from ${streetName}!`);
+  });
 
-      //log the received message and send it back to the client
-      console.log('received: %s', message);
-      socket.send(`Hello, you sent -> ${message}`);
+  wsClientCCU.on('message', message => {
+    console.log(`PCU ${streetName} received from CCU: ${message}`);
+  });
+
+  wss.on('connection', socket => {
+
+    socket.on('message', message => {
+
+      const parsedMessage = JSON.parse(message);
+
+      switch (parsedMessage.type) {
+        case 'info':
+          console.log(`PCU ${streetName}: Pole ${parsedMessage.message.poleId} connected!`);
+          break;
+        case 'sensorsData':
+          console.log(`PCU ${streetName}: Pole ${parsedMessage.message.poleId} sent: ${JSON.stringify(parsedMessage.message.data)}`);
+          break;
+        default:
+          console.log('BAD DATA!');
+          break;
+      }
     });
 
     socket.on('close', () => {
       console.log('closed');
     });
-  
-    //send immediatly a feedback to the incoming connection    
-    socket.send(`You are client ${req.connection.remoteAddress}`);
-});
 
-//start our server
-const startPCUServer = (port) => {
-  server.listen(port, () => {
-    console.log(`Server started on port ${server.address().port} :)`);
+    console.log(`PCU ${streetName}: New client connected!`);
   });
+
+  server.listen(port, () => {
+    console.log(`PCU server started on port ${port} :)`);
+  });
+
 };
 
 module.exports = {
