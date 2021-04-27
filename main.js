@@ -7,34 +7,54 @@ const {
   ccu,
 } = require('./config');
 
-const { getWeatherData } = require("./services/getWeatherService");
+// const { getWeatherData } = require("./services/getWeatherService");
 
-getWeatherData();
+// getWeatherData();
 
-// startCCUServer(ccu.port);
+startCCUServer(ccu.port);
 
-// let globalIndexPole = 1;
-// for (let indexStreet = 1; indexStreet <= streets.length; indexStreet++) {
+let globalIndexPole = 1;
+for (let indexStreet = 1; indexStreet <= streets.length; indexStreet++) {
   
-//   const { streetName, length } = streets[indexStreet - 1];
-//   startPCUServer(ccu.port + indexStreet, streetName, ccu);
-//   const currentGlobalIndexPole = globalIndexPole;
+  const { streetName, length } = streets[indexStreet - 1];
+  startPCUServer(ccu.port + indexStreet, streetName, ccu);
+  const currentGlobalIndexPole = globalIndexPole;
+
+  for (
+    ;
+    globalIndexPole < currentGlobalIndexPole + getNumberOfPolesForStreetLength(length);
+    globalIndexPole++
+  ) {
+    
+    startPoleNode(
+      buildPoleId(globalIndexPole, streetName),
+      3000,
+      {
+        streetName,
+        host: 'localhost',
+        port: ccu.port + indexStreet,
+      });
+    
+  }
+  
+}
+//   const { streetName, length } = streets[0];
+//   startPCUServer(ccu.port + 1, streetName, ccu);
 
 //   for (
-//     ;
-//     globalIndexPole < currentGlobalIndexPole + getNumberOfPolesForStreetLength(length);
-//     globalIndexPole++
+//     let index = 0;
+//     index < getNumberOfPolesForStreetLength(length);
+//     index++
 //   ) {
     
 //     startPoleNode(
-//       buildPoleId(globalIndexPole, streetName),
+//       buildPoleId(index, streetName),
 //       3000,
 //       {
 //         streetName,
 //         host: 'localhost',
-//         port: ccu.port + indexStreet,
+//         port: ccu.port + 1,
 //       });
     
-//   }
-
 // }
+  
