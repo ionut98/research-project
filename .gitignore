@@ -1,1 +1,4 @@
-node_modules
+./ccu_node/node_modules
+./pcu_node/node_modules
+./pole_node/node_modules
+./init_script/node_modules
