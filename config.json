@@ -1,0 +1,32 @@
+{
+  "ccu" : {
+    "host": "localhost",
+    "port": 30401 
+  },
+  "streets": [
+    {
+      "streetName": "Traian Vuia",
+      "length": 100,
+      "pcuHost": "localhost",
+      "poleInterval": 3000
+    },
+    {
+      "streetName": "Calugareni",
+      "length": 50,
+      "pcuHost": "localhost",
+      "poleInterval": 3000
+    },
+    {
+      "streetName": "George Cosbuc",
+      "length": 300,
+      "pcuHost": "localhost",
+      "poleInterval": 3000
+    },
+    {
+      "streetName": "Corneliu Coposu",
+      "length": 350,
+      "pcuHost": "localhost",
+      "poleInterval": 3000
+    }
+  ]
+}

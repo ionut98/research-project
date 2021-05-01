@@ -1,0 +1,11 @@
+[2021-05-01T18:52:36.539] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884356538,"light":6,"temperature":30,"humidity":39,"intensity":56,"motionDetected":true}}
+[2021-05-01T18:52:39.539] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884359538,"light":10,"temperature":12,"humidity":37,"intensity":51,"motionDetected":false}}
+[2021-05-01T18:52:42.550] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884362549,"light":3,"temperature":26,"humidity":40,"intensity":77,"motionDetected":false}}
+[2021-05-01T18:52:45.551] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884365551,"light":1,"temperature":24,"humidity":10,"intensity":36,"motionDetected":true}}
+[2021-05-01T18:52:48.552] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884368551,"light":3,"temperature":-20,"humidity":40,"intensity":2,"motionDetected":true}}
+[2021-05-01T18:52:51.558] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884371557,"light":1,"temperature":-3,"humidity":11,"intensity":56,"motionDetected":false}}
+[2021-05-01T18:52:54.564] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884374564,"light":9,"temperature":15,"humidity":75,"intensity":56,"motionDetected":true}}
+[2021-05-01T18:52:57.571] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884377570,"light":1,"temperature":17,"humidity":98,"intensity":59,"motionDetected":false}}
+[2021-05-01T18:53:00.585] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884380584,"light":3,"temperature":14,"humidity":22,"intensity":90,"motionDetected":false}}
+[2021-05-01T18:53:03.592] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884383591,"light":1,"temperature":-5,"humidity":18,"intensity":43,"motionDetected":false}}
+[2021-05-01T18:53:06.593] [DEBUG] default - {"poleId":"C-3","data":{"timeStamp":1619884386592,"light":3,"temperature":-18,"humidity":98,"intensity":11,"motionDetected":false}}
