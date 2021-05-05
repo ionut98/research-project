@@ -10,8 +10,11 @@ const buildPoleId = (poleIndex, streetName) => {
   return streetName.split(' ').map(word => word[0]).join('') + '-' + poleIndex;
 };
 
+const roundTo2Decimals = num => Math.round((num + Number.EPSILON) * 100) / 100;
+
 module.exports = {
   randomValueBetweenValues,
   getNumberOfPolesForStreetLength,
-  buildPoleId
+  buildPoleId,
+  roundTo2Decimals
 };

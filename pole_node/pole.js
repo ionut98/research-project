@@ -34,7 +34,7 @@ const startPoleNode = (poleId, interval, pcu) => {
     wsClientCCU.send(
     
       JSON.stringify({
-        type: 'info',
+        type: 'poleConnection',
         message: {
           poleId         
         }
