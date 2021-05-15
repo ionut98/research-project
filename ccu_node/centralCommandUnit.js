@@ -8,6 +8,7 @@ const app = express();
 
 // initialize a simple http server
 const server = http.createServer(app);
+const events = require('events');
 
 // initialize the WebSocket server instance
 const wss = new WebSocket.Server({ server });
@@ -16,7 +17,35 @@ const clients = {
   users: []
 };
 
-const queryResultByPCU = {};
+const queryResultByPCU = new events.EventEmitter();
+queryResultByPCU.data = {};
+
+queryResultByPCU.on('collected-results', queryId => {
+  
+  if (!queryId) {
+    return null;
+  }
+
+  let incompleteData = false;
+  Object.keys(queryResultByPCU.data).forEach(pcu => {
+    
+    if (incompleteData) {
+      return;
+    }
+    
+    if (queryResultByPCU.data[pcu][queryId] === undefined) {
+      incompleteData = true;
+      return;
+    }
+  });
+
+  if (!incompleteData) {
+    sendQueryResultIfCollectedAllData(queryId);
+    Object.keys(queryResultByPCU.data).forEach(pcu => delete queryResultByPCU.data[pcu][queryId]);
+  }
+
+});
+
 const queriesIntervals = {};
 
 const aggregateQueryResult = msg => {
@@ -28,14 +57,14 @@ const aggregateQueryResult = msg => {
     }
   } = msg;
 
-  queryResultByPCU[pcu][Number(queryId)] = queryResult;
+  queryResultByPCU.data[pcu][+queryId] = queryResult;
 };
 
 const sendQueryResultIfCollectedAllData = queryId => {
   const result = [];
-  Object.keys(queryResultByPCU).forEach(pcu => {
-    if (queryResultByPCU[pcu][queryId] !== undefined) {
-      result.push({ pcu, queryId, queryResult: queryResultByPCU[pcu][queryId] });
+  Object.keys(queryResultByPCU.data).forEach(pcu => {
+    if (queryResultByPCU.data[pcu][queryId] !== undefined) {
+      result.push({ pcu, queryId, queryResult: queryResultByPCU.data[pcu][queryId] });
     }
   })
 
@@ -48,6 +77,10 @@ const sendQueryResultIfCollectedAllData = queryId => {
     })
   );
 
+};
+
+const deleteQuery = queryId => {
+  Object.keys(queryResultByPCU.data).forEach(pcu => delete queryResultByPCU.data[pcu][queryId]);
 };
 
 wss.on('connection', socket => {
@@ -75,18 +108,19 @@ wss.on('connection', socket => {
             })
           );
 
-          queryResultByPCU[pcu] = {};
+          queryResultByPCU.data[pcu] = {};
 
           // add the pcu client in clients.pcus list
           clients.pcus.push(socket);
           break;
-        case 'query':
+        case 'query': {
 
           const {
             queryType,
             action,
             timeFrame,
-            queryId
+            queryId,
+            nrOfTuples
           } = msg;
 
           // log the received query type from user and send back the result
@@ -95,26 +129,39 @@ wss.on('connection', socket => {
           clients.users.push(socket);
         
           if (action === 'start') {
-            const intervalId = setInterval(
-              () => sendQueryResultIfCollectedAllData(queryId), timeFrame
-            );
-            queriesIntervals[queryId] = intervalId;
+            
+            if (nrOfTuples === undefined) {
+              const intervalId = setInterval(
+                () => sendQueryResultIfCollectedAllData(queryId), timeFrame || 1000 // if no timeframe, at least 1 second
+              );
+              queriesIntervals[queryId] = intervalId;
+            }
+          
           } else if (action === 'stop') {
             clearInterval(queriesIntervals[queryId]);
+            deleteQuery(queryId);
           }
 
           // broadcast the message received from user
           clients.pcus.forEach(pcuWS => {
             pcuWS.send(
               JSON.stringify(
-                { ...parsedMessage, queryId}
+                { ...parsedMessage, queryId }
               )
             );
           });
 
           break;
+        }
         case 'queryResult':
+          const {
+            result: {
+              queryId,
+            },
+          } = msg;
+          console.log(msg, '<-- msg primit');
           aggregateQueryResult(msg);
+          queryResultByPCU.emit('collected-results', queryId);
           break;
         default:
           console.log('BAD DATA!');

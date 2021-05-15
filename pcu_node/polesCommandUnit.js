@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
+const events = require('events');
 const { roundTo2Decimals } = require('./utils');
 
 const startPCUServer = (port, streetName, ccu) => {
@@ -57,15 +58,24 @@ const startPCUServer = (port, streetName, ccu) => {
 
       Object.keys(microBatchQueriesSpecs).forEach(queryId => {
 
-        const storedPoleData = microBatchingQueriesResults[queryId][poleId];
+        const storedPoleData = microBatchingQueriesResults.data[queryId][poleId];
 
         if (
             !storedPoleData.length ||
             timeStamp >= storedPoleData[storedPoleData.length - 1].timeStamp
           ) {
-            microBatchingQueriesResults[queryId][poleId].push(data);
+            microBatchingQueriesResults.data[queryId][poleId].push(data);
         } else {
-          microBatchingQueriesResults[queryId][poleId].unshift(data);
+          microBatchingQueriesResults.data[queryId][poleId].unshift(data);
+        }
+
+        if (microBatchQueriesSpecs[queryId].nrOfTuples !== undefined) {
+          let result = { queryResult: 0 }; // used this way to collect emitter callback result
+          microBatchingQueriesResults.emit('collect-data', queryId, result);
+          console.log(result, 'RESULT');
+          if (result.queryResult !== null) {
+            sendResultToCCU(result.queryResult, queryId);
+          }
         }
 
       });
@@ -85,8 +95,47 @@ const startPCUServer = (port, streetName, ccu) => {
   const wsClientCCU = new WebSocket(`ws://${ccu.host}:${ccu.port}`);
 
   const queriesIntervals = {};
-  const microBatchingQueriesResults = {};
   const microBatchQueriesSpecs = {};
+
+  // WE ASSUME THAT IF THE POLE IS CONNECTED THEN IT WILL SEND THE SENSORS DATA
+
+  const microBatchingQueriesResults = new events.EventEmitter();
+  microBatchingQueriesResults.data = {};
+  microBatchingQueriesResults.on('collect-data', (queryId, result) => {
+    if (!queryId) {
+      result.queryResult = null;
+      return;
+    }
+
+    console.log(microBatchingQueriesResults.data);
+    const nrOfPoles = Object.keys(polesDictionary).length;
+    let nrOfMotionDetectedTrueValues = 0;
+
+    let incompleteData = false;
+    Object.keys(microBatchingQueriesResults.data[queryId]).forEach(poleId => {
+
+      if (incompleteData) {
+        return;
+      }
+
+      const currentPoleDataLength = microBatchingQueriesResults.data[queryId][poleId].length;
+      const nrOfTuples = microBatchQueriesSpecs[queryId].nrOfTuples;
+
+      if (currentPoleDataLength < nrOfTuples) {
+        incompleteData = true;
+        return;
+      }
+      
+      let poleBatchMotionDetectorValues = 0;
+      microBatchingQueriesResults.data[queryId][poleId]
+        .splice(0, nrOfTuples)
+        .forEach(entry => { if (entry.motionDetected) { poleBatchMotionDetectorValues++; } });
+      nrOfMotionDetectedTrueValues += (poleBatchMotionDetectorValues / nrOfTuples);
+
+    });
+    console.log(!incompleteData ? roundTo2Decimals(nrOfMotionDetectedTrueValues / nrOfPoles) : null, 'IN CALLBACK');
+    result.queryResult = !incompleteData ? roundTo2Decimals(nrOfMotionDetectedTrueValues / nrOfPoles) : null;
+  });
 
   const solveTrafficJamQuery = async (queryId, processingType, timeFrame) => new Promise((resolve, reject) => {
     let nrOfMotionDetectedTrueValues = 0;
@@ -105,7 +154,7 @@ const startPCUServer = (port, streetName, ccu) => {
 
     } else if (processingType === 'micro-batching') {
       
-      // if no timeframe, use polesDictionary 10 values stored data
+      // if no timeframe, use polesDictionary max 10 values stored data
       if ([0, undefined].includes(timeFrame)) {
         Object.keys(polesDictionary).forEach(poleId => {
           if (polesDictionary[poleId].length) {
@@ -118,15 +167,15 @@ const startPCUServer = (port, streetName, ccu) => {
         return resolve(roundTo2Decimals(nrOfMotionDetectedTrueValues / nrOfPoles));
       
       } else {
-        Object.keys(microBatchingQueriesResults[queryId]).forEach(poleId => {
-          const currentPoleData = microBatchingQueriesResults[queryId][poleId];
+        Object.keys(microBatchingQueriesResults.data[queryId]).forEach(poleId => {
+          const currentPoleData = microBatchingQueriesResults.data[queryId][poleId];
 
           if (currentPoleData.length) {
             let poleBatchMotionDetectorValues = 0;
 
             currentPoleData.forEach(entry => { if (entry.motionDetected) { poleBatchMotionDetectorValues++; } });
             nrOfMotionDetectedTrueValues += (poleBatchMotionDetectorValues / currentPoleData.length);
-            microBatchingQueriesResults[queryId][poleId] = [];
+            microBatchingQueriesResults.data[queryId][poleId] = [];
           }
         });
         return resolve(roundTo2Decimals(nrOfMotionDetectedTrueValues / nrOfPoles));
@@ -135,26 +184,40 @@ const startPCUServer = (port, streetName, ccu) => {
 
   });
 
-  const solveQueryAndSendResult = async (queryId, queryType, processingType, timeFrame) => {
+  const sendResultToCCU = (queryResult, queryId) => {
     const result = {
       pcu: streetName,
       queryId,
-      queryResult: null
+      queryResult
     };
+
+    wsClientCCU.send(JSON.stringify({
+      type: 'queryResult',
+      message: { result }
+    }));
+  };
+
+  const solveQueryAndSendResult = async (queryId, queryType, processingType, timeFrame, nrOfTuples) => {
+    // const result = {
+    //   pcu: streetName,
+    //   queryId,
+    //   queryResult: null
+    // };
 
     switch (queryType) {
       case 'traffic-jam':
-        result.queryResult = await solveTrafficJamQuery(queryId, processingType, timeFrame);
+        const queryResult = await solveTrafficJamQuery(queryId, processingType, timeFrame);
+        sendResultToCCU(queryResult, queryId);
         break;
     
       default:
         break;
     }
 
-    wsClientCCU.send(JSON.stringify({
-      type: 'queryResult',
-      message: { result }
-    }));
+    // wsClientCCU.send(JSON.stringify({
+    //   type: 'queryResult',
+    //   message: { result }
+    // }));
 
   };
 
@@ -181,31 +244,40 @@ const startPCUServer = (port, streetName, ccu) => {
         console.log(`PCU ${streetName} received from CCU: ${msg}`);
         break;
       case 'query':
-        microBatchingQueriesResults[queryId] = JSON.parse(JSON.stringify(polesDictionary));
-        Object.keys(microBatchingQueriesResults[queryId]).forEach(poleId => microBatchingQueriesResults[queryId][poleId] = []);
+        microBatchingQueriesResults.data[queryId] = JSON.parse(JSON.stringify(polesDictionary));
+        Object.keys(microBatchingQueriesResults.data[queryId]).forEach(poleId => microBatchingQueriesResults.data[queryId][poleId] = []);
 
         const {
           queryType,
           action,
           timeFrame,
-          processingType
+          processingType,
+          nrOfTuples
         } = msg;
 
-        console.log('query type:', queryType, 'processingType:', processingType, 'timeframe: ', timeFrame, 'action: ', action);
+        console.log(
+          'query type:', queryType,
+          'processingType:', processingType,
+          'timeframe: ', timeFrame,
+          'nrOfTuples: ', nrOfTuples,
+          'action: ', action
+        );
         
         if (action === 'start') {
 
           if (processingType === 'micro-batching') {
-            // to be added also nr of tuples
-            microBatchQueriesSpecs[queryId] = { timeFrame };
+            microBatchQueriesSpecs[queryId] = { timeFrame, nrOfTuples };
           }
 
-          const intervalId = setInterval(
-            () => solveQueryAndSendResult(queryId, queryType, processingType, timeFrame), timeFrame
-          );
-          queriesIntervals[queryId] = intervalId; 
+          if (nrOfTuples === undefined) {
+            const intervalId = setInterval(
+              () => solveQueryAndSendResult(queryId, queryType, processingType, timeFrame), timeFrame
+            );
+            queriesIntervals[queryId] = intervalId; 
+          }
         } else if (action === 'stop') {
           clearInterval(queriesIntervals[queryId]);
+          delete microBatchQueriesSpecs[queryId];
         }
         break;
       
@@ -239,6 +311,7 @@ const startPCUServer = (port, streetName, ccu) => {
           addMessageToPolesDictionary(msg);
           // if there is any micro batching query recorded, collect data
           addMessageToMicroBatchingActiveQueries(msg);
+          
           logMessage(msg);
           break;
         default:
