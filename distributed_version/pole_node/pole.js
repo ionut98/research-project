@@ -3,13 +3,13 @@ const { randomValueBetweenValues } = require('./utils');
 
 const startPoleNode = (poleId, interval, pcu) => {
 
-  // initialize the WebSocket client instance for CCU <-> PCU communication
-  const wsClientCCU = new WebSocket(`ws://${pcu.host}:${pcu.port}`);
+  // initialize the WebSocket client instance for POLE <-> PCU communication
+  const wsClientPCU = new WebSocket(`ws://${pcu.host}:${pcu.port}`);
 
   let intervalID = null;
 
   const sendSensorsData = () => {
-    wsClientCCU.send(
+    wsClientPCU.send(
 
       JSON.stringify({
         type: 'sensorsData',
@@ -29,9 +29,9 @@ const startPoleNode = (poleId, interval, pcu) => {
     );
   };
 
-  wsClientCCU.on('open', () => {
+  wsClientPCU.on('open', () => {
     
-    wsClientCCU.send(
+    wsClientPCU.send(
     
       JSON.stringify({
         type: 'poleConnection',
@@ -46,11 +46,11 @@ const startPoleNode = (poleId, interval, pcu) => {
   
   });
 
-  wsClientCCU.on('message', message => {
+  wsClientPCU.on('message', message => {
     console.log(`Pole #${poleId} received from PCU ${pcu.streetName}: ${message}`);
   });
 
-  wsClientCCU.on('close', () => {
+  wsClientPCU.on('close', () => {
     clearInterval(intervalID);
   });
 

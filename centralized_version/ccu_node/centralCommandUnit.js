@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
+const { roundTo2Decimals } = require('./utils');
 
 const app = express();
 // app.use(express.json());
@@ -8,65 +9,134 @@ const app = express();
 
 // initialize a simple http server
 const server = http.createServer(app);
-const events = require('events');
+// const events = require('events');
 
 // initialize the WebSocket server instance
 const wss = new WebSocket.Server({ server });
 const clients = {
-  pcus: [],
+  poles: [],
   users: []
 };
 
-const queryResultByPCU = new events.EventEmitter();
-queryResultByPCU.data = {};
+// LOGGING STUFF
+const log4js = require('log4js');
+log4js.configure({
+  appenders: { ccuAppender: { type: "file", filename: `CCU.log` } },
+  categories: { default: { appenders: ["ccuAppender"], level: "debug" } }
+});
 
-queryResultByPCU.on('collected-results', queryId => {
-  
-  if (!queryId) {
-    return null;
-  }
+const logger = log4js.getLogger();
 
-  let incompleteData = false;
-  Object.keys(queryResultByPCU.data).forEach(pcu => {
+/**
+ * {
+ *  queryId1: {
+ *    streetName1: {
+ *      poleId1: [],
+ *      poleId2: [],
+ *      poleId3: [],
+ *        ...
+ *    },
+ *    streetName2: {
+ *      poleId1: [],
+ *      poleId2: [],
+ *      poleId3: [],
+ *        ...
+ *    }
+ *  },
+ *  queryId2: {
+ *    ...
+ *  }
+ * }
+ */
+
+let dataObject = {'-1': {}}; // described above
+
+const logMessage = (message) => {
+  logger.debug(JSON.stringify(message));
+};
+
+const addMessageToDataObject = message => {
+  const {
+    streetName,
+    poleId,
+    data,
+    data: {
+      timeStamp,
+    },
+  } = message;
+
+  Object.keys(dataObject).forEach(queryId => {
     
-    if (incompleteData) {
-      return;
+    if (!dataObject[queryId][streetName]) {
+      dataObject[queryId][streetName] = {};
     }
-    
-    if (queryResultByPCU.data[pcu][queryId] === undefined) {
-      incompleteData = true;
-      return;
+
+    if (!dataObject[queryId][streetName][poleId]) {
+      dataObject[queryId][streetName][poleId] = [];
     }
+
+    const poleData = dataObject[queryId][streetName][poleId];
+
+    if (
+      !poleData.length ||
+      timeStamp >= poleData[poleData.length - 1].timeStamp
+    ) {
+      poleData.push(data);
+    } else {
+      poleData.unshift(data);
+    }
+
+    if (poleData.length > 10) {
+      poleData.shift();
+    }
+
   });
 
-  if (!incompleteData) {
-    sendQueryResultIfCollectedAllData(queryId);
-    Object.keys(queryResultByPCU.data).forEach(pcu => delete queryResultByPCU.data[pcu][queryId]);
-  }
-
-});
+};
 
 const queriesIntervals = {};
 
-const aggregateQueryResult = msg => {
-  const {
-    result: {
-      pcu,
-      queryId,
-      queryResult
-    }
-  } = msg;
+// for each poleId 
+const aggregatePolesDataByQueryId = (queryId, queryType) => {
+  const result = [];
 
-  queryResultByPCU.data[pcu][+queryId] = queryResult;
+  if (dataObject[queryId]) {
+
+    Object.keys(dataObject[queryId]).forEach(streetName => {
+
+      const polesAggResults = [];
+
+      if (queryType === 'traffic-jam') {
+
+        Object.keys(dataObject[queryId][streetName]).forEach(poleId => {
+
+          const poleData = dataObject[queryId][streetName][poleId];
+
+          if (poleData.length) {
+            const poleSum = (poleData.reduce(
+              (sum, poleData) => sum + +poleData.motionDetected, 0
+            ));
+            const average = roundTo2Decimals(poleSum / poleData.length);
+            polesAggResults.push(average);
+          }
+
+        });
+
+        const streetSum = polesAggResults.reduce(
+          (sum, poleAvg) => sum + +poleAvg, 0
+        );
+
+        const streetAverage = roundTo2Decimals(streetSum / Object.keys(dataObject[queryId][streetName]).length);
+        result.push({ streetName, queryId, queryResult: streetAverage });
+      }
+    });
+  }
+  return result;
 };
 
-const sendQueryResultIfCollectedAllData = queryId => {
-  const result = [];
-  Object.keys(queryResultByPCU.data).forEach(pcu => {
-    if (queryResultByPCU.data[pcu][queryId] !== undefined) {
-      result.push({ pcu, queryId, queryResult: queryResultByPCU.data[pcu][queryId] });
-    }
-  })
+const sendQueryResultIfCollectedAllData = (queryId, queryType) => {
+
+  const result = aggregatePolesDataByQueryId(queryId, queryType);
 
   clients.users[0].send(
     JSON.stringify({
@@ -80,10 +150,12 @@ const sendQueryResultIfCollectedAllData = queryId => {
 };
 
 const deleteQuery = queryId => {
-  Object.keys(queryResultByPCU.data).forEach(pcu => delete queryResultByPCU.data[pcu][queryId]);
+  delete dataObject[queryId];
 };
 
 wss.on('connection', socket => {
+
+  console.log('New client connected!');
 
   socket.on('message', message => {
 
@@ -94,25 +166,33 @@ wss.on('connection', socket => {
       const {
         type,
         message: msg,
-        pcu,
+        message: {
+          poleId,
+        },
       } = parsedMessage;
 
       switch (type) {
-        case 'pcuConnection':
-          // log the received message from pcu and send back the confirmation
-          console.log(`CCU received from PCU: ${msg}`);
-          socket.send(
-            JSON.stringify({
-              type: 'info',
-              message: 'OK, ready for communication!'
-            })
-          );
-
-          queryResultByPCU.data[pcu] = {};
-
-          // add the pcu client in clients.pcus list
-          clients.pcus.push(socket);
+        case 'poleConnection':
+          console.log(`CCU: Pole ${poleId} connected!`);
           break;
+        case 'sensorsData':
+          addMessageToDataObject(msg);
+          logMessage(msg);
+          break;
+        /**
+         * query message type
+         *  {
+         * {
+            type,
+            message: {
+              queryType,
+              action,
+              timeFrame,
+              queryId,
+              nrOfTuples
+            },
+         * }
+         */
         case 'query': {
 
           const {
@@ -129,10 +209,12 @@ wss.on('connection', socket => {
           clients.users.push(socket);
         
           if (action === 'start') {
-            
+          
+            dataObject[queryId] = {};
+
             if (nrOfTuples === undefined) {
               const intervalId = setInterval(
-                () => sendQueryResultIfCollectedAllData(queryId), timeFrame || 1000 // if no timeframe, at least 1 second
+                () => sendQueryResultIfCollectedAllData(queryId, queryType), timeFrame || 1000 // if no timeframe, at least 1 second
               );
               queriesIntervals[queryId] = intervalId;
             }
@@ -142,27 +224,8 @@ wss.on('connection', socket => {
             deleteQuery(queryId);
           }
 
-          // broadcast the message received from user
-          clients.pcus.forEach(pcuWS => {
-            pcuWS.send(
-              JSON.stringify(
-                { ...parsedMessage, queryId }
-              )
-            );
-          });
-
           break;
         }
-        case 'queryResult':
-          const {
-            result: {
-              queryId,
-            },
-          } = msg;
-          console.log(msg, '<-- msg primit');
-          aggregateQueryResult(msg);
-          queryResultByPCU.emit('collected-results', queryId);
-          break;
         default:
           console.log('BAD DATA!');
           break;
@@ -177,8 +240,6 @@ wss.on('connection', socket => {
     console.log('closed');
   });
 
-  // send immediately a feedback to the incoming connection    
-  console.log('CCU: New client connected!');
 });
 
 // start our server

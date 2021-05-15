@@ -1,9 +1,7 @@
 const { startPoleNode } = require("./pole");
 const { buildPoleId } = require("./utils");
 
-// TO TAKE CONFIG FROM PCU AT CONNECTION
-
-const [_, __, globalIndexPole, streetName, pcuPort, pcuHost, interval] = process.argv;
+const [_, __, globalIndexPole, streetName, ccuPort, ccuHost, interval] = process.argv;
 
 // const globalIndexPole = 1;
 // const streetName = 'Traian Vuia';
@@ -11,10 +9,11 @@ const [_, __, globalIndexPole, streetName, pcuPort, pcuHost, interval] = process
 
 startPoleNode(
   buildPoleId(globalIndexPole, streetName),
+  streetName,
   interval,
   {
     streetName,
-    host: pcuHost,
-    port: pcuPort,
+    host: ccuHost,
+    port: ccuPort,
   }
 );

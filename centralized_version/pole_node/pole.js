@@ -1,10 +1,10 @@
 const WebSocket = require('ws');
 const { randomValueBetweenValues } = require('./utils');
 
-const startPoleNode = (poleId, interval, pcu) => {
+const startPoleNode = (poleId, streetName, interval, ccu) => {
 
-  // initialize the WebSocket client instance for CCU <-> PCU communication
-  const wsClientCCU = new WebSocket(`ws://${pcu.host}:${pcu.port}`);
+  // initialize the WebSocket client instance for POLE <-> CCU communication
+  const wsClientCCU = new WebSocket(`ws://${ccu.host}:${ccu.port}`);
 
   let intervalID = null;
 
@@ -14,6 +14,7 @@ const startPoleNode = (poleId, interval, pcu) => {
       JSON.stringify({
         type: 'sensorsData',
         message: {
+          streetName,
           poleId,
           data: {
             timeStamp: new Date().getTime(),
@@ -47,7 +48,7 @@ const startPoleNode = (poleId, interval, pcu) => {
   });
 
   wsClientCCU.on('message', message => {
-    console.log(`Pole #${poleId} received from PCU ${pcu.streetName}: ${message}`);
+    console.log(`Pole #${poleId} received from CCU: ${message}`);
   });
 
   wsClientCCU.on('close', () => {
