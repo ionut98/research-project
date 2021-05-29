@@ -6,13 +6,13 @@
   "streets": [
     {
       "streetName": "Traian Vuia",
-      "length": 100,
+      "length": 500,
       "pcuHost": "localhost",
       "poleInterval": 3000
     },
     {
       "streetName": "Calugareni",
-      "length": 50,
+      "length": 250,
       "pcuHost": "localhost",
       "poleInterval": 3000
     },
@@ -24,7 +24,7 @@
     },
     {
       "streetName": "Corneliu Coposu",
-      "length": 350,
+      "length": 100,
       "pcuHost": "localhost",
       "poleInterval": 3000
     }

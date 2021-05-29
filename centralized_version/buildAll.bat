@@ -9,10 +9,10 @@ ECHO 1) BUILD CCU
 ECHO ===================================================
 compiler.exe ../ccu_node/start-ccu.js ccu
 ECHO ===================================================
-ECHO 3) BUILD POLE
+ECHO 2) BUILD POLE
 ECHO ===================================================
 compiler.exe ../pole_node/start-pole.js pole
-ECHO 4) BUILD START
+ECHO 3) BUILD START
 ECHO ===================================================
 compiler.exe ../init_script/main.js start-all
 ECHO ===================================================

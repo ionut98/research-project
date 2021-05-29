@@ -9,21 +9,13 @@ const {
   streets
 } = require('../config.json');
 
-const openDirectoryCommand = 'F: & cd "F:\\Master\\MasterAn2Sem2\\proiect cercetare\\executables\\" & ';
+const openDirectoryCommand = 'F: & cd "F:\\Master\\MasterAn2Sem2\\proiect cercetare\\centralized_version\\executables\\" & ';
 
 let commands = [
   openDirectoryCommand + `start ccu.exe ${ccuPort}`,
 ];
 
 const runCommand = (command) => setTimeout(() => child_process.exec(command), 500);
-
-const initPCUs = () => {
-  streets.forEach((street, index) => {
-    const command = openDirectoryCommand + `start pcu.exe `;
-    const params = `${ ccuPort + index + 1} "${ street.streetName }" ${ ccuPort } ${ ccuHost }`;
-    commands.push(command + params);
-  });
-};
 
 const initPoles = () => {
   let globalIndexPole = 1;
@@ -35,7 +27,7 @@ const initPoles = () => {
       poleIndex++
     ) {
       const command = openDirectoryCommand + `start pole.exe `;
-      const params = `${globalIndexPole} "${street.streetName}" ${ccuPort + streetIndex + 1} ${street.pcuHost} ${street.poleInterval}`;
+      const params = `${globalIndexPole} "${street.streetName}" ${ccuPort} ${ccuHost} ${street.poleInterval}`;
       commands.push(command + params);
       globalIndexPole++;
     }
@@ -44,7 +36,6 @@ const initPoles = () => {
 
 const main = () => {
   
-  initPCUs();
   commands.forEach(command => runCommand(command));
   commands = [];
   initPoles();
@@ -58,3 +49,4 @@ const main = () => {
 // getWeatherData();
 
 main();
+ 

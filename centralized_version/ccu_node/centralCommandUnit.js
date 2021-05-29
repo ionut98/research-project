@@ -9,7 +9,7 @@ const app = express();
 
 // initialize a simple http server
 const server = http.createServer(app);
-// const events = require('events');
+const events = require('events');
 
 // initialize the WebSocket server instance
 const wss = new WebSocket.Server({ server });
@@ -49,7 +49,34 @@ const logger = log4js.getLogger();
  * }
  */
 
-let dataObject = {'-1': {}}; // described above
+let dataObject = new events.EventEmitter();
+dataObject.data = {'-1': {}}; // described above
+
+const checkIfRequiredNrOfTuples = queryId => {
+  let isAllData = true;
+  
+  Object.keys(dataObject.data[queryId]).forEach(street => {
+    if (!isAllData) {
+      return;
+    }
+
+    Object.keys(dataObject.data[queryId][street]).forEach(pole => {
+      if (dataObject.data[queryId][street][pole].length < queriesSpecs[queryId].nrOfTuples) {
+        isAllData = false;
+      }
+    });
+
+  });
+
+  return isAllData;
+};
+
+dataObject.on('collect-data', (queryId, queryType, processingType) => {
+  console.log(dataObject.data[queryId], 'actual data in dataObject');
+  if(checkIfRequiredNrOfTuples(queryId)) {
+    sendQueryResultIfCollectedAllData(queryId, queryType, processingType);
+  }
+});
 
 const logMessage = (message) => {
   logger.debug(JSON.stringify(message));
@@ -65,17 +92,17 @@ const addMessageToDataObject = message => {
     },
   } = message;
 
-  Object.keys(dataObject).forEach(queryId => {
+  Object.keys(dataObject.data).forEach(queryId => {
     
-    if (!dataObject[queryId][streetName]) {
-      dataObject[queryId][streetName] = {};
+    if (!dataObject.data[queryId][streetName]) {
+      dataObject.data[queryId][streetName] = {};
     }
 
-    if (!dataObject[queryId][streetName][poleId]) {
-      dataObject[queryId][streetName][poleId] = [];
+    if (!dataObject.data[queryId][streetName][poleId]) {
+      dataObject.data[queryId][streetName][poleId] = [];
     }
 
-    const poleData = dataObject[queryId][streetName][poleId];
+    const poleData = dataObject.data[queryId][streetName][poleId];
 
     if (
       !poleData.length ||
@@ -85,9 +112,19 @@ const addMessageToDataObject = message => {
     } else {
       poleData.unshift(data);
     }
+    
+    if (
+      queriesSpecs[queryId] &&
+      queriesSpecs[queryId].processingType === 'micro-batching' &&
+      queriesSpecs[queryId].nrOfTuples !== undefined 
+    ) {
+      dataObject.emit('collect-data', queryId, queriesSpecs[queryId].queryType, queriesSpecs[queryId].processingType);
+    }
 
-    if (poleData.length > 10) {
-      poleData.shift();
+    if (`${queryId}` === '-1' || [undefined, null, 'native'].includes(queriesSpecs[queryId].processingType)) {
+      if (poleData.length > 10) { // storing locally last 10 values 
+        poleData.shift();
+      }
     }
 
   });
@@ -95,30 +132,57 @@ const addMessageToDataObject = message => {
 };
 
 const queriesIntervals = {};
+const queriesSpecs = {};
 
 // for each poleId 
-const aggregatePolesDataByQueryId = (queryId, queryType) => {
+const aggregatePolesDataByQueryId = (queryId, queryType, processingType) => {
   const result = [];
 
-  if (dataObject[queryId]) {
+  if (dataObject.data[queryId]) {
 
-    Object.keys(dataObject[queryId]).forEach(streetName => {
+    Object.keys(dataObject.data[queryId]).forEach(streetName => {
 
       const polesAggResults = [];
 
       if (queryType === 'traffic-jam') {
 
-        Object.keys(dataObject[queryId][streetName]).forEach(poleId => {
-
-          const poleData = dataObject[queryId][streetName][poleId];
-
+        Object.keys(dataObject.data[queryId][streetName]).forEach(poleId => {
+          
+          let poleData = dataObject.data[queryId][streetName][poleId];
+          
           if (poleData.length) {
-            const poleSum = (poleData.reduce(
-              (sum, poleData) => sum + +poleData.motionDetected, 0
-            ));
-            const average = roundTo2Decimals(poleSum / poleData.length);
-            polesAggResults.push(average);
-          }
+            if (processingType === 'micro-batching' && queriesSpecs[queryId].nrOfTuples !== undefined) {
+              const nrOfTuples = queriesSpecs[queryId].nrOfTuples;
+
+              if (poleData.length >= nrOfTuples) {
+
+                const poleSum = (poleData.splice(0, nrOfTuples).reduce(
+                  (sum, poleData) => sum + +poleData.motionDetected, 0
+                ));
+
+                const average = roundTo2Decimals(poleSum / nrOfTuples);
+                polesAggResults.push(average);
+                
+              }
+            }
+            
+            else if (processingType === 'micro-batching' && queriesSpecs[queryId].timeFrame !== undefined) {
+
+              const poleSum = (poleData.reduce(
+                (sum, poleData) => sum + +poleData.motionDetected, 0
+              ));
+
+              const average = roundTo2Decimals(poleSum / poleData.length);
+              polesAggResults.push(average);
+              
+              dataObject.data[queryId][streetName][poleId] = [];
+            }
+
+            else if (['native', undefined, null].includes(processingType)) {
+              polesAggResults.push(+poleData[poleData.length - 1].motionDetected);
+            }
+
+          } 
 
         });
 
@@ -126,7 +190,7 @@ const aggregatePolesDataByQueryId = (queryId, queryType) => {
           (sum, poleAvg) => sum + +poleAvg, 0
         );
 
-        const streetAverage = roundTo2Decimals(streetSum / Object.keys(dataObject[queryId][streetName]).length);
+        const streetAverage = roundTo2Decimals(streetSum / Object.keys(dataObject.data[queryId][streetName]).length);
         result.push({ streetName, queryId, queryResult: streetAverage });
       }
     });
@@ -134,9 +198,9 @@ const aggregatePolesDataByQueryId = (queryId, queryType) => {
   return result;
 };
 
-const sendQueryResultIfCollectedAllData = (queryId, queryType) => {
+const sendQueryResultIfCollectedAllData = (queryId, queryType, processingType) => {
 
-  const result = aggregatePolesDataByQueryId(queryId, queryType);
+  const result = aggregatePolesDataByQueryId(queryId, queryType, processingType);
 
   clients.users[0].send(
     JSON.stringify({
@@ -150,7 +214,16 @@ const sendQueryResultIfCollectedAllData = (queryId, queryType) => {
 };
 
 const deleteQuery = queryId => {
-  delete dataObject[queryId];
+  delete dataObject.data[queryId];
+  delete queriesSpecs[queryId];
+};
+
+const checkIfAnyMBQuery = () => {
+  return Object.keys(queriesSpecs)
+    .filter(queryId =>
+      queriesSpecs[queryId].processingType === 'micro-batching'
+    )
+    .length > 0;
 };
 
 wss.on('connection', socket => {
@@ -200,7 +273,8 @@ wss.on('connection', socket => {
             action,
             timeFrame,
             queryId,
-            nrOfTuples
+            nrOfTuples,
+            processingType
           } = msg;
 
           // log the received query type from user and send back the result
@@ -210,15 +284,19 @@ wss.on('connection', socket => {
         
           if (action === 'start') {
           
-            dataObject[queryId] = {};
+            dataObject.data[queryId] = {};
+            queriesSpecs[queryId] = { timeFrame, nrOfTuples, processingType, queryType };
 
-            if (nrOfTuples === undefined) {
+            if (
+              ['native', undefined, null].includes(processingType) ||
+              (processingType === 'micro-batching' && nrOfTuples === undefined)
+            ) {
               const intervalId = setInterval(
-                () => sendQueryResultIfCollectedAllData(queryId, queryType), timeFrame || 1000 // if no timeframe, at least 1 second
+                () => sendQueryResultIfCollectedAllData(queryId, queryType, processingType), timeFrame || 1000 // if no timeframe, at least 1 second
               );
               queriesIntervals[queryId] = intervalId;
             }
-          
+
           } else if (action === 'stop') {
             clearInterval(queriesIntervals[queryId]);
             deleteQuery(queryId);
@@ -232,6 +310,7 @@ wss.on('connection', socket => {
       }
     }
     catch (error) {
+      console.log(error);
       socket.send('error');
     }
   });
