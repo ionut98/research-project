@@ -4,7 +4,7 @@ import { Grid, makeStyles } from '@material-ui/core';
 const useStyles = makeStyles({
   container: {
     backgroundColor: '#ddd',
-    height: '100vh',
+    height: '93vh',
   },
 });
 
