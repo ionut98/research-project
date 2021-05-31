@@ -1,5 +1,7 @@
-import * as React from 'react';
+import React, { useContext } from 'react';
 import { AppBar, Toolbar, Typography, Button, makeStyles } from '@material-ui/core';
+
+import { Context } from '../context/context';
 
 import logo from '../images/logo.png';
 
@@ -30,12 +32,19 @@ const useStyles = makeStyles(theme => ({
 
 const TopBar = () => {
   const classes = useStyles();
+  const context = useContext(Context);
+
+  const {
+    setIsLogged
+  } = context;
+
+  const handleLogout = () => setIsLogged(false);
 
   return (
     <AppBar position="static" className={classes.bar}>
       <Toolbar>
         <img src={logo} alt="logo" className={classes.logo}/>
-        <Button color="inherit" className={classes.loginButton}>Login</Button>
+        <Button color="inherit" className={classes.loginButton} onClick={handleLogout}>Logout</Button>
       </Toolbar>
     </AppBar>
   );
