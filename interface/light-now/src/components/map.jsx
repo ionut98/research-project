@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Grid, makeStyles } from '@material-ui/core';
+import { Grid, makeStyles, Typography } from '@material-ui/core';
+import { Brightness7, WbIncandescent, Opacity } from '@material-ui/icons';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -7,10 +8,27 @@ import PropTypes from 'prop-types';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+import TemperatureIcon from '../icons/temperature';
+import LampOffIcon from '../icons/lamp-off.svg';
+import LampOnIcon from '../icons/lamp-on.svg';
 
 let defaultIcon = L.icon({
     iconUrl: icon,
     shadowUrl: iconShadow
+});
+
+const lampOffIcon = L.icon({
+  iconUrl: LampOffIcon,
+  iconSize: [25, 71],
+  iconAnchor: [35, 60],
+  popupAnchor: [-30, -64],
+});
+
+const lampOnIcon = L.icon({
+  iconUrl: LampOnIcon,
+  iconSize: [25, 71],
+  iconAnchor: [35, 60],
+  popupAnchor: [-30, -64],
 });
 
 L.Marker.prototype.options.icon = defaultIcon;
@@ -20,6 +38,36 @@ const useStyles = makeStyles({
     width: '100%',
     height: '93vh'
   },
+  popup: {
+    width: '100%',
+    textAlign: 'left'
+  },
+  popupStreetName: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  sensorParamName: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    padding: 0,
+    width: '100%'
+  },
+  sensorParamValue: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    width: '100%',
+    padding: 0,
+  },
+  sensorParamIcon: {
+    marginRight: 10
+  },
+  sensorParamRow: {
+    padding: 0,
+    margin: 0,
+  }
 });
 
 const AddPole = ({ handlePlaceMarker }) => {
@@ -96,18 +144,78 @@ const PolesMap = () => {
         zoom={17}
         dragging={true}>
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
         />
         {
           polesPositions.map((pole, index) => (
-            <Marker key={index} position={pole}>
+            <Marker key={index} position={pole} icon={lampOnIcon}>
               <Popup>
-                Pole {index}
+                <Grid container className={classes.popup}>
+                  <Grid item xs={12} className={classes.popupStreetName}>
+                    {/* StreetName + Index */}
+                    <Typography variant={'h6'}>
+                      NUME_STRADA {index + 1}
+                    </Typography>
+                  </Grid>
+                  
+                  <Grid item container xs={12} className={classes.sensorParamRow}>
+                    <Grid item xs={10}>
+                      <Typography className={classes.sensorParamName}>
+                        <Brightness7 className={classes.sensorParamIcon}/>
+                        Sunlight:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={2}>
+                      <Typography className={classes.sensorParamValue}>
+                        {`${20}%`}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                  <Grid item container xs={12} className={classes.sensorParamRow}>
+                    <Grid item xs={10}>
+                      <Typography className={classes.sensorParamName}>
+                        <WbIncandescent className={classes.sensorParamIcon}/>
+                        Light Intensity:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={2}>
+                      <Typography className={classes.sensorParamValue}>
+                        {`${25}%`}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                  <Grid item container xs={12} className={classes.sensorParamRow}>
+                    <Grid item xs={10}>
+                      <Typography className={classes.sensorParamName}>
+                        <TemperatureIcon />
+                        Temperature:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={2}>
+                      <Typography className={classes.sensorParamValue}>
+                        {`${20}°C`}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                  <Grid item container xs={12} className={classes.sensorParamRow}>
+                    <Grid item xs={10}>
+                      <Typography className={classes.sensorParamName}>
+                        {/* <Opacity className={classes.sensorParamIcon}/>
+                         */}
+                        Humidity:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={2}>
+                      <Typography className={classes.sensorParamValue}>
+                        {`${740}mmHg`}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Grid>
               </Popup>
             </Marker> 
           ))
         }
-        <AddPole handlePlaceMarker={addNewPolePosition}/>
       </MapContainer>
     </Grid> 
   );
