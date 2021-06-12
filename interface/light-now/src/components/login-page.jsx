@@ -44,18 +44,18 @@ const LoginPage = () => {
       <Grid item container xs={7} className={classes.leftSection}>
         <Grid item xs={6} className={classes.centeredRight}>
           <Zoom delay={1500}>
-            <img src={bulbImage} />
+            <img src={bulbImage} alt='bulb-logo'/>
           </Zoom>
         </Grid>
         <Grid item xs={6} container>
           <Grid item xs={12} className={classes.alignBottom}>
             <Fade big>
-              <img src={nameImage} height={'100vh'}/>
+              <img src={nameImage} height={'100vh'} alt='light-now'/>
             </Fade>
           </Grid>
           <Grid item xs={12}>
             <Fade big delay={1000}>
-              <img src={sloganImage} />
+              <img src={sloganImage} alt='let-it-be-light'/>
             </Fade>
           </Grid>
         </Grid>

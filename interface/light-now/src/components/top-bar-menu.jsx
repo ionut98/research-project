@@ -10,22 +10,27 @@ const useStyles = makeStyles(theme => ({
     flexGrow: 1,
   },
   bar: {
-    height: '7vh',
+    height: 50,
   },
   title: {
     flexGrow: 1,
   },
   logo: {
-    height: '7vh',
+    height: 50,
     position: 'absolute',
     top: 0,
     left: 0,
   },
   loginButton: {
     position: 'absolute',
-    right: 0,
     top: '1vh',
     right: '1vh',
+    color: '#fff'
+  },
+  scheduleButton: {
+    position: 'absolute',
+    right: 80,
+    top: '1vh',
     color: '#fff'
   },
 }));
@@ -35,15 +40,21 @@ const TopBar = () => {
   const context = useContext(Context);
 
   const {
-    setIsLogged
+    setIsLogged,
+    setInterventionModalOpen,
+    setQueryModalOpen,
   } = context;
 
   const handleLogout = () => setIsLogged(false);
+  const handleIntervention = () => setInterventionModalOpen(true);
+  const handleQuery = () => setQueryModalOpen(true);
 
   return (
     <AppBar position="static" className={classes.bar}>
       <Toolbar>
         <img src={logo} alt="logo" className={classes.logo}/>
+        <Button color="inherit" className={classes.queryButton} onClick={handleQuery}>Query</Button>
+        <Button color="inherit" className={classes.scheduleButton} onClick={handleIntervention}>Intervention</Button>
         <Button color="inherit" className={classes.loginButton} onClick={handleLogout}>Logout</Button>
       </Toolbar>
     </AppBar>

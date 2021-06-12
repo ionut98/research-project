@@ -6,14 +6,14 @@ import { Context, Provider } from './context/context';
 const App = props => {
   return (
     <Provider {...props}>
-      {/* <Context.Consumer> */}
-        {/* {context => (
+      {/* <Context.Consumer>
+        {context => (
           context.isLogged
             ? <MainPage />
             : <LoginPage />
-        )} */}
-        <MainPage />
-      {/* </Context.Consumer> */}
+        )}
+      </Context.Consumer> */}
+      <MainPage />
     </Provider>
   );
 }
