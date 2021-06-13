@@ -94,7 +94,7 @@ const InterventionModal = () => {
       setTimeout(() => setIntervention({
         timer: 60,
         level: 'pcu',
-        target: null
+        target: ''
       }), 500);
     }
   }, [interventionModalOpen])
@@ -172,7 +172,7 @@ const InterventionModal = () => {
               fullWidth
             >
               {
-                (intervention.level === 'pcu' ? pcus : poles).map(el => <MenuItem value={el.streetId}>{el.streetId}</MenuItem>)
+                (intervention.level === 'pcu' ? pcus : poles).map((el, index) => <MenuItem key={index} value={el.streetId}>{el.streetId}</MenuItem>)
               }
             </TextField>
           </Grid>

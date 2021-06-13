@@ -23,9 +23,8 @@ const useStyles = makeStyles(theme => ({
   },
   root: {
     margin: 5,
-    height: 80,
-    border: '2px solid',
-    backgroundColor: 'red',
+    height: 60,
+    backgroundColor: '#c62828',
     width: '100%',
     padding: 0,
     color: '#fff'

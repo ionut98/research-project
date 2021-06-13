@@ -29,9 +29,19 @@ const useStyles = makeStyles(theme => ({
   },
   scheduleButton: {
     position: 'absolute',
-    right: 80,
+    right: 85,
     top: '1vh',
-    color: '#fff'
+    color: '#fff',
+    borderRight: '1px solid #fff',
+    borderRadius: 0
+  },
+  queryButton: {
+    position: 'absolute',
+    right: 210,
+    top: '1vh',
+    color: '#fff',
+    borderRight: '1px solid #fff',
+    borderRadius: 0,
   },
 }));
 

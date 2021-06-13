@@ -8,9 +8,8 @@ import {
   Typography,
   Tooltip
 } from '@material-ui/core';
-import { Delete, MyLocation, Timer } from '@material-ui/icons';
+import { AllInbox, GroupWork, OfflineBolt, Stop, Timer } from '@material-ui/icons';
 import { Context } from '../context/context';
-import Countdown from 'react-countdown';
 
 const useStyles = makeStyles(theme => ({
   centered: {
@@ -20,38 +19,29 @@ const useStyles = makeStyles(theme => ({
   },
   root: {
     margin: 5,
-    height: 80,
+    height: 100,
     border: '2px solid',
-    borderColor: '#ff8f00',
+    borderColor: theme.palette.primary.main,
     width: '100%',
     padding: 0
   },
   icon: {
     marginRight: 5
-  },
-  deleteIcon: {
-    color: 'red'
   }
 }));
 
-const InterventionCard = ({ intervention }) => {
+const QueryCard = ({ query }) => {
   const classes = useStyles();
   const context = useContext(Context);
 
   const {
-    setInterventions,
-    interventions
+    setQueries,
+    queries
   } = context;
 
-  const handleDelete = () => {
-    setInterventions(
-      interventions.filter(interv => interv.target !== intervention.target)
-    );
-  };
-
-  const handleTimerCompleted = () => {
-    setInterventions(
-      interventions.filter(interv => interv.target !== intervention.target)
+  const handleStop = () => {
+    setQueries(
+      queries.filter(q => q.queryId !== query.queryId)
     );
   };
 
@@ -63,39 +53,50 @@ const InterventionCard = ({ intervention }) => {
         <Grid container>
           <Grid item container xs={9}>
             <Grid item xs={12} className={classes.title}>
-              <Tooltip title={`${intervention.target}`}>
+              <Tooltip title={`${query.queryType} ${query.queryId}`}>
                 <Typography className={classes.centered}>
-                  <MyLocation className={classes.icon} />
-                    {truncate(intervention.target)}
+                  <OfflineBolt className={classes.icon} />
+                  {truncate(`${query.queryType} ${query.queryId}`)}
                 </Typography>
               </Tooltip>
             </Grid>
             <Grid item xs={12} className={classes.title}>
               <Typography className={classes.centered}>
-                <Timer className={classes.icon}/>
-                {/* {intervention.timer} */}
-                <Countdown
-                  date={Date.now() + (intervention.timer * 1000)}
-                  onComplete={handleTimerCompleted}
-                  renderer={props => <span>{props.minutes}:{props.seconds}</span>}
-                />
+                <AllInbox className={classes.icon} />
+                {query.processingType}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} className={classes.title}>
+              <Typography className={classes.centered}>
+                {
+                  query.timeFrame !== -1 ?
+                    <>
+                      <Timer className={classes.icon} />
+                      {query.timeFrame} ms
+                    </>
+                    : <>
+                      <GroupWork className={classes.icon} />
+                      {query.nrOfTuples} tuples
+                    </>
+                }
               </Typography>
             </Grid>
           </Grid>
           <Grid item xs={3} className={classes.centered}>
             <Button
               fullWidth
-              className={classes.deleteIcon}
               variant={'text'}
-              onClick={handleDelete}
+              onClick={handleStop}
+              color={'primary'}
             >
-              <Delete />
+              <Stop />
             </Button>
           </Grid>
         </Grid>
       </CardContent>
     </Card>
   );
+
 };
 
-export default InterventionCard;
+export default QueryCard;

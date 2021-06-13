@@ -10,6 +10,7 @@ const Provider = ({ children }) => {
   const [interventionModalOpen, setInterventionModalOpen] = useState(false);
   const [queryModalOpen, setQueryModalOpen] = useState(false);
   const [interventions, setInterventions] = useState([]);
+  const [queries, setQueries] = useState([]);
   const [poles, setPoles] = useState([
     // eroilor
     {
@@ -322,6 +323,45 @@ const Provider = ({ children }) => {
     { target: 'Ariesului' },
   ]);
 
+  const [queryResults, setQueryResults] = useState([
+    {
+      queryId: 1,
+      queryType: 'traffic-jam',
+      result: [
+        {
+          pcu: 'Universitatii',
+          queryResult: 0.4 
+        },
+        {
+          pcu: 'Ariesului',
+          queryResult: 0.6
+        },
+        {
+          pcu: 'Eroilor',
+          queryResult: 0.5
+        },
+      ]
+    },
+    {
+      queryId: 2,
+      queryType: 'biggest-consumption',
+      result: [
+        {
+          pcu: 'Universitatii',
+          queryResult: 0.1 
+        },
+        {
+          pcu: 'Ariesului',
+          queryResult: 0.8
+        },
+        {
+          pcu: 'Eroilor',
+          queryResult: 0.3
+        },
+      ]
+    },
+  ]);
+
   return (
     <Context.Provider
       value={{
@@ -333,6 +373,8 @@ const Provider = ({ children }) => {
         interventions,
         alerts,
         queryModalOpen,
+        queries,
+        queryResults,
         // METHODS,
         setIsLogged,
         setSelectedPole,
@@ -340,7 +382,9 @@ const Provider = ({ children }) => {
         setPoles,
         setInterventions,
         setAlerts,
-        setQueryModalOpen
+        setQueryModalOpen,
+        setQueries,
+        setQueryResults
       }}
     >
       {children}

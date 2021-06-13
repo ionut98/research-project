@@ -10,6 +10,8 @@
     "@testing-library/jest-dom": "^5.12.0",
     "@testing-library/react": "^11.2.7",
     "@testing-library/user-event": "^12.8.3",
+    "highcharts": "^9.1.1",
+    "highcharts-react-official": "^3.0.0",
     "leaflet": "^1.7.1",
     "react": "^17.0.2",
     "react-countdown": "^2.3.2",

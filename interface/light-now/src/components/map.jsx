@@ -110,7 +110,7 @@ const PolesMap = () => {
   // }, [polesPositions]);
 
   return (
-    <Grid container item xs={8}>
+    <Grid container item xs={7}>
       <MapContainer
         className={classes.map} 
         center={position} 

@@ -5,6 +5,7 @@ import SideBarMenu from './side-bar-menu';
 import RightSideStats from './right-side-stats';
 import TopBar from './top-bar-menu';
 import InterventionModal from './intervention-modal';
+import QueryModal from './query-modal';
 
 const MainPage = () => {
   
@@ -16,6 +17,7 @@ const MainPage = () => {
         <PolesMap />
         <RightSideStats />
         <InterventionModal />
+        <QueryModal />
       </Grid>
     </>
   );
