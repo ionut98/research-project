@@ -15,7 +15,10 @@ module.exports = {
   ],
   ccu: {
     port: 30401,
-    host: 'localhost'
+    host: 'localhost',
+    mongo: {
+      dbConnString: 'mongodb://localhost:27017/ccu'
+    }
   },
   weatherParams: {
     lat: '45.443921003588585',

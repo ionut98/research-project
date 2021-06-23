@@ -1,17 +1,33 @@
-const express = require('express');
-const http = require('http');
-const WebSocket = require('ws');
+// const http = require('http');
+// const WebSocket = require('ws');
 
-const app = express();
-// app.use(express.json());
-// app.use(express.urlencoded({ extended: true }));
+const express = require('express');
+const server = express();
+const wsServer = require('express-ws')(server);
+const cors = require('cors');
+const { MongoClient } = require('mongodb');
+
+const {
+  ccu: {
+    mongo: {
+      dbConnString,
+    }
+  }
+} = require('./config');
+
+server.use(express.json());
+server.use(express.urlencoded({ extended: true }));
+server.use(cors());
+
+const wsRouter = express.Router();
+const router = require('./router.js');
 
 // initialize a simple http server
-const server = http.createServer(app);
+// const server = http.createServer(app);
 const events = require('events');
 
 // initialize the WebSocket server instance
-const wss = new WebSocket.Server({ server });
+// const wss = new WebSocket.Server({ server });
 const clients = {
   pcus: [],
   users: []
@@ -68,14 +84,16 @@ const sendQueryResultIfCollectedAllData = queryId => {
     }
   })
 
-  clients.users[0].send(
-    JSON.stringify({
-      type: 'queryResult',
-      message: {
-        result,
-      }
-    })
-  );
+  if (result.length) {
+    wsServer.getWss('/query').clients.forEach(client => client.send(
+      JSON.stringify({
+        type: 'queryResult',
+        message: {
+          result,
+        }
+      })
+    ));
+  }
 
 };
 
@@ -83,108 +101,160 @@ const deleteQuery = queryId => {
   Object.keys(queryResultByPCU.data).forEach(pcu => delete queryResultByPCU.data[pcu][queryId]);
 };
 
-wss.on('connection', socket => {
-
-  socket.on('message', message => {
-
-    try {
-
-      const parsedMessage = JSON.parse(message);
-
-      const {
-        type,
-        message: msg,
-        pcu,
-      } = parsedMessage;
-
-      switch (type) {
-        case 'pcuConnection':
-          // log the received message from pcu and send back the confirmation
-          console.log(`CCU received from PCU: ${msg}`);
-          socket.send(
-            JSON.stringify({
-              type: 'info',
-              message: 'OK, ready for communication!'
-            })
-          );
-
-          queryResultByPCU.data[pcu] = {};
-
-          // add the pcu client in clients.pcus list
-          clients.pcus.push(socket);
-          break;
-        case 'query': {
-
-          const {
-            queryType,
-            action,
-            timeFrame,
-            queryId,
-            nrOfTuples
-          } = msg;
-
-          // log the received query type from user and send back the result
-          console.log(`CCU received query ${queryId} from user: ${queryType} with action ${action}`);
-          // add the user client in clients.users list
-          clients.users.push(socket);
-        
-          if (action === 'start') {
-            
-            if (nrOfTuples === undefined) {
-              const intervalId = setInterval(
-                () => sendQueryResultIfCollectedAllData(queryId), timeFrame || 1000 // if no timeframe, at least 1 second
-              );
-              queriesIntervals[queryId] = intervalId;
-            }
-          
-          } else if (action === 'stop') {
-            clearInterval(queriesIntervals[queryId]);
-            deleteQuery(queryId);
-          }
-
-          // broadcast the message received from user
-          clients.pcus.forEach(pcuWS => {
-            pcuWS.send(
-              JSON.stringify(
-                { ...parsedMessage, queryId }
-              )
-            );
-          });
-
-          break;
-        }
-        case 'queryResult':
-          const {
-            result: {
-              queryId,
-            },
-          } = msg;
-          console.log(msg, '<-- msg primit');
-          aggregateQueryResult(msg);
-          queryResultByPCU.emit('collected-results', queryId);
-          break;
-        default:
-          console.log('BAD DATA!');
-          break;
-      }
-    }
-    catch (error) {
-      socket.send('error');
-    }
-  });
-
-  socket.on('close', () => {
-    console.log('closed');
-  });
-
-  // send immediately a feedback to the incoming connection    
-  console.log('CCU: New client connected!');
-});
-
 // start our server
+
 const startCCUServer = port => {
+
+  wsRouter.ws('/pcu-connection', (ws, req) => {
+    // send immediately a feedback to the incoming connection    
+    console.log('CCU: New client connected!');
+
+    ws.on('close', () => {
+      console.log('closed');
+    });
+
+    ws.on('message', message => {
+
+      try {
+        const parsedMessage = JSON.parse(message);
+
+        const {
+          type,
+          message: msg,
+          pcu,
+        } = parsedMessage;
+
+            // log the received message from pcu and send back the confirmation
+            console.log(`CCU received from PCU: ${msg}`);
+            ws.send(
+              JSON.stringify({
+                type: 'info',
+                message: 'OK, ready for communication!'
+              })
+            );
+
+            queryResultByPCU.data[pcu] = {};
+
+            // add the pcu client in clients.pcus list
+            // clients.pcus.push(ws);
+      }
+      catch (error) {
+        ws.send('error');
+      }
+    });
+
+  });
+
+  wsRouter.ws('/query', (ws, req) => {
+
+    ws.on('close', () => {
+      console.log('closed');
+    });
+
+    ws.on('message', message => {
+
+      try {
+        const parsedMessage = JSON.parse(message);
+
+        const {
+          message: msg,
+        } = parsedMessage;
+
+        const {
+          queryType,
+          action,
+          timeFrame,
+          queryId,
+          nrOfTuples
+        } = msg;
+
+        // log the received query type from user and send back the result
+        console.log(`CCU received query ${queryId} from user: ${queryType} with action ${action}`);
+        // add the user client in clients.users list
+        // clients.users.push(ws);
+      
+        if (action === 'start') {
+          
+          if (nrOfTuples === undefined) {
+            const intervalId = setInterval(
+              () => sendQueryResultIfCollectedAllData(queryId), timeFrame || 1000 // if no timeframe, at least 1 second
+            );
+            queriesIntervals[queryId] = intervalId;
+          }
+        
+        } else if (action === 'stop') {
+          clearInterval(queriesIntervals[queryId]);
+          deleteQuery(queryId);
+        }
+
+        // broadcast the message received from user
+        wsServer.getWss('/pcu-connection').clients.forEach(pcuWS => {
+          pcuWS.send(
+            JSON.stringify(
+              { ...parsedMessage, queryId }
+            )
+          );
+        });
+        
+      }
+      catch (error) {
+        ws.send('error');
+      }
+      
+    });
+  
+  });
+
+  wsRouter.ws('/query-result', (ws, req) => {
+
+    ws.on('close', () => {
+      console.log('closed');
+    });
+
+    ws.on('message', message => {
+
+      try {
+        const parsedMessage = JSON.parse(message);
+        const {
+          message: msg,
+        } = parsedMessage;
+
+        const {
+          result: {
+            queryId,
+          },
+        } = msg;
+
+        console.log(msg, '<-- msg primit');
+        aggregateQueryResult(msg);
+        queryResultByPCU.emit('collected-results', queryId);
+      
+      } catch (error) {
+        ws.send('error');
+      }
+
+    });
+
+  });
+
+  server.use('/', wsRouter);
+
+  MongoClient.connect(dbConnString, {
+      useUnifiedTopology: true,
+    }, (err, client) => {
+    
+      if (err) {
+        return console.error(err);
+      }
+      console.log('Connected to CCU DB');
+    
+      const db = client.db('ccu');
+      server.use(router({db}));
+    },
+  );
+
   server.listen(port, () => {
-    console.log(`CCU server started on port ${server.address().port} :)`);
+    console.log(`CCU server started on port ${port} :)`);
   });
 };
 
