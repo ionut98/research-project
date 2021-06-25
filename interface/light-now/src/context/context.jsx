@@ -1,5 +1,6 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
+import axios from 'axios';
 
 const Context = createContext();
 
@@ -361,6 +362,26 @@ const Provider = ({ children }) => {
       ]
     },
   ]);
+
+  const checkIfTokenValid = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return false;
+    }
+    
+    const result = await axios.post('http://localhost:30401/check-token', { token })
+      .catch(error => {
+        setIsLogged(false);
+      });
+    
+    if (result) {
+      setIsLogged(true);
+    }
+  };
+
+  useEffect(() => {
+    checkIfTokenValid();
+  }, []);
 
   return (
     <Context.Provider

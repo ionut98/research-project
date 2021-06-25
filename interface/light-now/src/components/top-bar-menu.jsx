@@ -55,7 +55,7 @@ const TopBar = () => {
     setQueryModalOpen,
   } = context;
 
-  const handleLogout = () => setIsLogged(false);
+  const handleLogout = () => { setIsLogged(false); localStorage.clear();}
   const handleIntervention = () => setInterventionModalOpen(true);
   const handleQuery = () => setQueryModalOpen(true);
 
